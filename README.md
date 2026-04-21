@@ -12,7 +12,7 @@ A tiny browser utility that automatically clicks the **Retry** button in the Ant
 
 ## Usage
 
-Open the Antigravity page and paste the script into your browser console.
+Open the Antigravity page and paste the script into your browser console. Help > Toggle Developer Tools. The type A'llow pasting" to enable script pasting. Just paste the script and it will do the job! 
 
 ## API
 
