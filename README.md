@@ -1,44 +1,36 @@
 # antigravity-auto-retry
 
-A tiny browser utility that automatically clicks the **Retry** button in the Antigravity panel when it appears.
-
-## Features
-
-- Observes DOM changes in real time
-- Detects visible and enabled Retry button
-- Clicks instantly using microtask scheduling
-- Prevents rapid repeated clicks with a small guard
-- Simple API for control
-
-## Usage
-
-Open the Antigravity page and paste the script into your browser console. Help > Toggle Developer Tools. The type A'llow pasting" to enable script pasting. Just paste the script and it will do the job! 
-
-## Tampermonkey
-
-You can also install the script as a Tampermonkey userscript.
-
-1. Install Tampermonkey in your browser
-2. Create a new userscript
-3. Paste the contents of `userscript/antigravity-auto-retry.user.js`
-4. Update the `@match` rule to your actual Antigravity URL if needed
-5. Save and enable the script
-
-
-## API
-
-```js
-antigravityAutoRetry.start()
-antigravityAutoRetry.stop()
-antigravityAutoRetry.status()
-
-# antigravity-auto-retry
-
 Ever felt frustrated seeing the message **"Our servers are experiencing high traffic right now, please try again in a minute."** in Antigravity while using Claude Opus?
 
 Tired of clicking **Retry** again and again like it's your full-time job?
 
 This tiny browser utility fixes that.
+
+---
+
+## Why this exists
+
+When using Claude Opus inside Antigravity, high traffic often causes retries to fail.
+
+Manually clicking Retry breaks focus and flow.
+
+This tool automates that friction away.
+
+---
+
+## How it works
+
+- Watches the Antigravity panel using MutationObserver
+- Detects a visible and enabled Retry button
+- Clicks it automatically with a small delay guard
+
+---
+
+## Safety
+
+- Only clicks visible and enabled Retry buttons
+- Includes a small delay to prevent rapid repeated clicks
+- Does not interact with anything outside the Antigravity panel
 
 ---
 
@@ -63,16 +55,25 @@ So instead of babysitting the UI, you can just let it handle retries in the back
 
 ## Usage (Console)
 
+Use the source file:
+
+```
+src/antigravity-auto-retry.js
+```
+
+Steps:
+
 1. Open the Antigravity page
-2. Open Developer Tools (`Help → Toggle Developer Tools` or `Cmd + Option + I` / `Ctrl + Shift + I`)
+2. Open Developer Tools (`Cmd + Option + I` / `Ctrl + Shift + I`)
 3. Go to the **Console** tab
 4. Type:
    ```
    allow pasting
    ```
-5. Paste the script and press Enter
+5. Copy the contents of `src/antigravity-auto-retry.js`
+6. Paste it into the console and press Enter
 
-Done. It will start automatically.
+The script will start automatically.
 
 ---
 
