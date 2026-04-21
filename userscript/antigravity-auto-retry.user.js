@@ -1,4 +1,18 @@
+// ==UserScript==
+// @name         Antigravity Auto Retry
+// @namespace    https://github.com/rupok/antigravity-auto-retry
+// @version      0.2.0
+// @description  Automatically clicks the Retry button in the Antigravity side panel
+// @author       Rupok
+// @note         Update the @match rule below to your actual Antigravity domain before daily use
+// @match        https://your-antigravity-domain/*
+// @grant        none
+// @run-at       document-idle
+// ==/UserScript==
+
 (() => {
+  'use strict';
+
   const GLOBAL_KEY = '__antigravityAutoRetry__';
   const PUBLIC_API_NAME = 'antigravityAutoRetry';
 
@@ -154,8 +168,8 @@
       documentObserver = null;
       panelObserver = null;
       activePanel = null;
-
       log('stopped');
+
       return this.status();
     },
 
