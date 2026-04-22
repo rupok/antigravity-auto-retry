@@ -49,28 +49,60 @@ It runs until you reload the window. Paste again next session.
 
 Set-and-forget. The extension patches Antigravity's `workbench.html` to load the retry script on every launch. Survives restarts, resilient to updates via a one-click reapply.
 
-### Build the extension
+### Install in one command
+
+Make sure `antigravity` is on your `PATH` first. If not: open Antigravity → Command Palette → **Shell Command: Install 'antigravity' command in PATH**.
+
+Then paste this into your terminal:
 
 ```bash
-cd extension
-npm install
-npm run build
-npm run package   # produces antigravity-auto-retry-<version>.vsix
+curl -fL https://github.com/rupok/antigravity-auto-retry/raw/main/antigravity-auto-retry.vsix -o /tmp/antigravity-auto-retry.vsix && antigravity --install-extension /tmp/antigravity-auto-retry.vsix
 ```
 
-Prerequisite for `package`: `npm install -g @vscode/vsce`.
+This downloads the `.vsix` straight from this repo and installs it into Antigravity.
 
-### Install into Antigravity
+### Apply the patch
 
-Command Palette → **Extensions: Install from VSIX...** → pick the built `.vsix`.
+Open (or reload) Antigravity. A notification appears:
 
-Then:
+> Antigravity Auto Retry is installed. Apply the workbench patch now so it runs on every launch?
 
-1. Command Palette → **Antigravity Auto Retry: Install**
-2. Approve the "Reload Window" prompt.
-3. Trigger a high-traffic failure (or wait for one). Retry will fire automatically.
+Click **Install Patch**, then **Reload Window** on the next notification. After the reload, the status bar bottom-right shows **✓ Auto Retry: on**. Dismiss Antigravity's "Your installation appears to be corrupt" banner if it appears — it's cosmetic (see [Tradeoffs](#tradeoffs-to-know)).
 
-If you see a **permission denied** modal, Antigravity was installed with root-owned files. The modal shows the exact `chown` command to run in a terminal — it is not executed for you. After running it, run **Install** again.
+Trigger a high-traffic failure (or wait for one) — Retry fires automatically.
+
+**If you see a "Permission denied" modal**, Antigravity was installed with root-owned files. The modal shows the exact `sudo chown` command to paste into a terminal — it's not executed for you. Run it, then click **Install Patch** again.
+
+### Verify it's working
+
+Open DevTools (`Cmd+Opt+I` / `Ctrl+Shift+I`) → Console, and run:
+
+```js
+antigravityAutoRetry.status()
+```
+
+You should see `{ isRunning: true, isTripped: false, panelFound: true, ... }`.
+
+### Install manually (no CLI)
+
+If you'd rather not use the `antigravity` CLI:
+
+1. Download [antigravity-auto-retry.vsix](antigravity-auto-retry.vsix) from this repo.
+2. Open Antigravity → Command Palette → **Extensions: Install from VSIX…** and pick the file.
+
+Same "Install Patch" notification appears after install.
+
+### Build from source
+
+```bash
+git clone https://github.com/rupok/antigravity-auto-retry.git
+cd antigravity-auto-retry/extension
+npm install
+npm run build
+npm run package   # writes ../antigravity-auto-retry.vsix
+```
+
+Requires Node.js 18+.
 
 ### After an Antigravity update
 

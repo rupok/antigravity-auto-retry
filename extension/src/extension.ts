@@ -128,14 +128,31 @@ async function openScript() {
   }
 }
 
-async function maybeNudgeForReapply(context: vscode.ExtensionContext) {
+async function maybeNudge(context: vscode.ExtensionContext) {
   const state = detectState();
-  if (state !== 'needs-reapply') return;
-  // Only nudge once per app version change.
+  if (state === 'installed') return;
+
+  if (state === 'not-installed') {
+    const shownKey = 'firstRunPromptShown';
+    if (context.globalState.get<boolean>(shownKey)) return;
+    await context.globalState.update(shownKey, true);
+
+    const choice = await vscode.window.showInformationMessage(
+      'Antigravity Auto Retry is installed. Apply the workbench patch now so it runs on every launch?',
+      'Install Patch',
+      'Later'
+    );
+    if (choice === 'Install Patch') {
+      await runInstall(context.extensionPath, false);
+    }
+    return;
+  }
+
+  // needs-reapply — nudge with a 6h cooldown so we don't nag after every reload.
   const lastNudgeKey = 'lastReapplyNudge';
   const last = context.globalState.get<number>(lastNudgeKey, 0);
   const now = Date.now();
-  if (now - last < 6 * 60 * 60 * 1000) return; // 6h cooldown
+  if (now - last < 6 * 60 * 60 * 1000) return;
 
   await context.globalState.update(lastNudgeKey, now);
   const choice = await vscode.window.showWarningMessage(
@@ -168,7 +185,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   refreshStatusBar();
-  void maybeNudgeForReapply(context);
+  void maybeNudge(context);
 }
 
 export function deactivate() {

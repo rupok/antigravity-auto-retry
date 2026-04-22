@@ -42,7 +42,7 @@
   "scripts": {
     "build": "tsc -p .",
     "watch": "tsc -p . -w",
-    "package": "vsce package"
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository --out ../antigravity-auto-retry.vsix"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
