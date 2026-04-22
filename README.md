@@ -49,6 +49,14 @@ It runs until you reload the window. Paste again next session.
 
 Set-and-forget. The extension patches Antigravity's `workbench.html` to load the retry script on every launch. Survives restarts, resilient to updates via a one-click reapply.
 
+### Install via Antigravity chat (easiest)
+
+Antigravity's agent has terminal access. Paste this into the chat and hit Enter:
+
+> Install the Antigravity Auto Retry extension from https://github.com/rupok/antigravity-auto-retry — run the one-line install command from the README.
+
+The agent will fetch the `.vsix` and run `antigravity --install-extension` for you. After the install completes, reload the window and click **Install Patch** on the notification that appears.
+
 ### Install in one command
 
 Make sure `antigravity` is on your `PATH` first. If not: open Antigravity → Command Palette → **Shell Command: Install 'antigravity' command in PATH**.
