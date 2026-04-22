@@ -4,7 +4,7 @@ Ever felt frustrated seeing **"Our servers are experiencing high traffic right n
 
 Tired of clicking **Retry** again and again like it's your full-time job?
 
-This extension fixes that.
+This project fixes that.
 
 ---
 
@@ -14,33 +14,40 @@ Antigravity is a VSCode fork (an Electron app) that ships Claude via its own bun
 
 Antigravity does not expose a public extension API for the chat panel — its webview is locked down and its retry control is not reachable from a third-party extension. There is no official seam, and none is likely to be added.
 
-So this project ships a small, honest workbench patch that loads a retry-clicking script into Antigravity's renderer on every startup. The extension's job is to manage that patch cleanly: install, reapply after updates, uninstall.
+So this project ships a small retry-clicking script, plus an optional VSCode extension that loads it into Antigravity on every launch.
 
 ---
 
-## How it works
+## Two ways to use it
 
-1. You install the extension's `.vsix` into Antigravity.
-2. You run **Antigravity Auto Retry: Install** once.
-3. The extension backs up `workbench.html`, copies `antigravity-auto-retry.js` into `~/.antigravity-auto-retry/`, and adds a single `<script>` block to Antigravity's `workbench.html` that inlines that script.
-4. On every Antigravity launch, the script starts a `MutationObserver`, watches for a visible, enabled `Retry` button inside an element whose text mentions "high traffic", and clicks it — at most once every 500 ms.
-5. A circuit breaker stops the script after 10 clicks in 60 s so a broken UI can never become a click storm.
+Pick whichever fits your style — both use the same script and the same safety guarantees.
 
-No network calls. No telemetry. One script, one patch, one backup file.
+| Method | Effort | Persistence |
+| --- | --- | --- |
+| **[DevTools paste](#option-1-devtools-paste)** | Paste once per window | Runs until you reload |
+| **[VSCode extension](#option-2-vscode-extension)** | Build + install once, reapply after Antigravity updates | Every launch, forever |
 
----
-
-## Safety
-
-- Clicks only a button that is visible, enabled, and sits inside a container whose text matches `/high\s+traffic/i`. Random "Retry" buttons elsewhere are ignored.
-- 500 ms minimum interval between clicks.
-- Auto-disables after 10 clicks in 60 s to avoid click loops against a broken UI.
-- No writes outside `workbench.html` and `~/.antigravity-auto-retry/`.
-- `workbench.html.antigravity-auto-retry.bak` holds the unmodified file for one-command uninstall.
+If you just want to try it, start with the DevTools paste. If you like it, move to the extension.
 
 ---
 
-## Install
+## Option 1: DevTools paste
+
+No install, no patching. Works in every Antigravity window you paste it into.
+
+1. In Antigravity, open DevTools: `Cmd+Opt+I` (macOS) or `Ctrl+Shift+I` (Windows/Linux).
+2. Switch to the **Console** tab.
+3. If Antigravity prompts for consent, type `allow pasting` and press Enter.
+4. Copy the contents of [extension/antigravity-auto-retry.js](extension/antigravity-auto-retry.js) and paste into the console.
+5. Press Enter. The script starts immediately.
+
+It runs until you reload the window. Paste again next session.
+
+---
+
+## Option 2: VSCode extension
+
+Set-and-forget. The extension patches Antigravity's `workbench.html` to load the retry script on every launch. Survives restarts, resilient to updates via a one-click reapply.
 
 ### Build the extension
 
@@ -53,7 +60,7 @@ npm run package   # produces antigravity-auto-retry-<version>.vsix
 
 Prerequisite for `package`: `npm install -g @vscode/vsce`.
 
-### Install the .vsix into Antigravity
+### Install into Antigravity
 
 Command Palette → **Extensions: Install from VSIX...** → pick the built `.vsix`.
 
@@ -65,20 +72,13 @@ Then:
 
 If you see a **permission denied** modal, Antigravity was installed with root-owned files. The modal shows the exact `chown` command to run in a terminal — it is not executed for you. After running it, run **Install** again.
 
----
+### After an Antigravity update
 
-## After an Antigravity update
-
-Antigravity updates overwrite `workbench.html`, which removes our patch. The status bar will show **Auto Retry: reapply** and a notification will nudge you. Either:
-
-- Click the status bar item, or
-- Command Palette → **Antigravity Auto Retry: Reapply**
+Antigravity updates overwrite `workbench.html`, which removes the patch. The status bar will show **Auto Retry: reapply** and a notification will nudge you. Either click the status bar item, or run Command Palette → **Antigravity Auto Retry: Reapply**.
 
 Your edits to `~/.antigravity-auto-retry/antigravity-auto-retry.js` are preserved across reapplies — only the `workbench.html` patch is refreshed.
 
----
-
-## Commands
+### Commands
 
 | Command | What it does |
 | --- | --- |
@@ -90,9 +90,32 @@ Your edits to `~/.antigravity-auto-retry/antigravity-auto-retry.js` are preserve
 
 ---
 
-## Usage from the console
+## How it works
 
-Once installed, the script exposes controls in the window:
+Whichever method you use, the script:
+
+1. Starts a `MutationObserver` on the Antigravity workbench.
+2. Watches for a visible, enabled `Retry` button whose ancestor container text matches `/high\s+traffic/i`.
+3. Clicks it — at most once every 500 ms.
+4. Stops itself if it clicks more than 10 times in 60 s, so a broken UI can never become a click storm.
+
+No network calls. No telemetry.
+
+---
+
+## Safety
+
+- Clicks only a button that is visible, enabled, and sits inside a container whose text matches `/high\s+traffic/i`. Random "Retry" buttons elsewhere are ignored.
+- 500 ms minimum interval between clicks.
+- Auto-disables after 10 clicks in 60 s to avoid click loops against a broken UI.
+- Extension writes only to `workbench.html` and `~/.antigravity-auto-retry/`.
+- `workbench.html.antigravity-auto-retry.bak` holds the unmodified file for one-command uninstall.
+
+---
+
+## Console API
+
+Once the script is running (via either method), you can control it from DevTools:
 
 ```js
 antigravityAutoRetry.start()
@@ -124,24 +147,14 @@ localStorage.antigravityAutoRetryDebug = '1'
 
 ---
 
-## Expected tradeoffs (read this)
+## Tradeoffs to know
+
+These apply to the VSCode extension only. The DevTools paste has none of these — it's transient and leaves nothing behind.
 
 - **"Your Antigravity installation appears to be corrupt" banner.** Antigravity checksums its own bundle; patching `workbench.html` trips that check. The banner is dismissable. This is the price of admission for touching the workbench at all — no approved alternative exists.
 - **Updates revert the patch.** Antigravity updates replace `workbench.html`. Use **Reapply**. The extension nudges you automatically.
 - **Selector drift.** If Antigravity rearranges the Retry button or rewords the error, the script may stop matching. Edit `~/.antigravity-auto-retry/antigravity-auto-retry.js` and reload.
 - **Hostile UI changes.** If Antigravity moves the chat into an isolated cross-origin webview, this approach stops working. That would require a separate approach (CDP via an external process) which is out of scope.
-
----
-
-## Fallback: DevTools paste (no install)
-
-If you don't want to patch anything, you can paste the retry script into DevTools each session:
-
-1. In Antigravity, `Cmd+Opt+I` / `Ctrl+Shift+I` → Console.
-2. Type `allow pasting` if the console prompts you.
-3. Paste the contents of `extension/antigravity-auto-retry.js` and hit Enter.
-
-It runs until you reload the window. Not persistent, but requires zero install.
 
 ---
 
