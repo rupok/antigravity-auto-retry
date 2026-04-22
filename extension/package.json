@@ -1,0 +1,52 @@
+{
+  "name": "antigravity-auto-retry",
+  "displayName": "Antigravity Auto Retry",
+  "description": "Automatically clicks the Retry button when Antigravity shows the high-traffic error.",
+  "version": "0.1.0",
+  "publisher": "rupok",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.68.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "antigravityAutoRetry.install",
+        "title": "Antigravity Auto Retry: Install"
+      },
+      {
+        "command": "antigravityAutoRetry.uninstall",
+        "title": "Antigravity Auto Retry: Uninstall"
+      },
+      {
+        "command": "antigravityAutoRetry.reapply",
+        "title": "Antigravity Auto Retry: Reapply (after update)"
+      },
+      {
+        "command": "antigravityAutoRetry.status",
+        "title": "Antigravity Auto Retry: Show Status"
+      },
+      {
+        "command": "antigravityAutoRetry.openScript",
+        "title": "Antigravity Auto Retry: Open Retry Script"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -p . -w",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.68.0",
+    "typescript": "^5.4.0"
+  }
+}
