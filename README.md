@@ -51,11 +51,16 @@ Set-and-forget. The extension patches Antigravity's `workbench.html` to load the
 
 ### Install via Antigravity chat (easiest)
 
-Antigravity's agent has terminal access. Paste this into the chat and hit Enter:
+Antigravity's agent has terminal and command-palette access. Paste this into the chat and hit Enter:
 
-> Install the Antigravity Auto Retry extension from https://github.com/rupok/antigravity-auto-retry — run the one-line install command from the README.
+> Install the Antigravity Auto Retry extension from https://github.com/rupok/antigravity-auto-retry and apply its workbench patch.
+>
+> 1. Run the one-line install command from the README (curl + `antigravity --install-extension`).
+> 2. Reload this window so the extension activates.
+> 3. Run the **Antigravity Auto Retry: Install** command from the command palette.
+> 4. Reload the window again so the patch takes effect.
 
-The agent will fetch the `.vsix` and run `antigravity --install-extension` for you. After the install completes, reload the window and click **Install Patch** on the notification that appears.
+If the agent can execute command-palette commands, it'll do all four steps for you. If it can only run terminal commands, it'll stop after step 1 and the extension's first-run notification will walk you through the rest — one click.
 
 ### Install in one command
 
