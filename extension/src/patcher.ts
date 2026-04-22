@@ -182,6 +182,32 @@ export function uninstall(): { workbenchHtml: string; restored: boolean } {
   return { workbenchHtml, restored: false };
 }
 
+export function refreshScript(
+  extensionDir: string,
+  createBackup: boolean
+): { scriptPath: string; backupPath?: string; wasOverwrite: boolean } {
+  const bundled = path.join(extensionDir, 'antigravity-auto-retry.js');
+  const src = readFile(bundled);
+
+  const dir = userDataDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  const target = userScriptPath();
+  const wasOverwrite = fs.existsSync(target);
+
+  let backup: string | undefined;
+  if (createBackup && wasOverwrite) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    backup = `${target}.${stamp}.bak`;
+    writeFile(backup, readFile(target));
+  }
+
+  writeFile(target, src);
+  return { scriptPath: target, backupPath: backup, wasOverwrite };
+}
+
 export function sudoHintForPatch(workbenchHtml: string): string {
   // Guidance surfaced to the user when the extension hits EACCES. We do not
   // execute this — the user runs it themselves in a terminal.

@@ -12,6 +12,10 @@
   const RUNAWAY_WINDOW_MS = 60_000;
   const RUNAWAY_MAX_CLICKS = 10;
 
+  // Periodic "still on duty" heartbeat so the user can see the script is
+  // alive without enabling verbose debug logging.
+  const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
+
   const DEBUG = (() => {
     try {
       return localStorage.getItem('antigravityAutoRetryDebug') === '1';
@@ -22,7 +26,22 @@
 
   const OBSERVED_ATTRIBUTE_FILTER = ['disabled', 'aria-disabled'];
 
-  const log = (...args) => {
+  // User-visible logging. Subtle styled prefix so it stands out in the console
+  // without being noisy. `debug()` stays gated behind the DEBUG flag for
+  // per-scan detail.
+  const LOG_PREFIX = '%c[Antigravity Auto Retry]';
+  const LOG_STYLE = 'color:#4ea1ff;font-weight:bold';
+  const LOG_RESET = 'color:inherit';
+
+  const info = (message, ...args) => {
+    console.log(`${LOG_PREFIX}%c ${message}`, LOG_STYLE, LOG_RESET, ...args);
+  };
+
+  const warn = (message, ...args) => {
+    console.warn(`${LOG_PREFIX}%c ${message}`, LOG_STYLE, LOG_RESET, ...args);
+  };
+
+  const debug = (...args) => {
     if (DEBUG) {
       console.log('[antigravityAutoRetry]', ...args);
     }
@@ -37,6 +56,7 @@
   let documentObserver = null;
   let panelObserver = null;
   let activePanel = null;
+  let heartbeatTimer = null;
 
   let lastRetryClickAt = 0;
   let retryClickCount = 0;
@@ -77,12 +97,16 @@
     return '';
   };
 
+  const HIGH_TRAFFIC_ANCESTOR_DEPTH = 20;
+
   const hasHighTrafficContext = (btn) => {
     // Anchor the click on the high-traffic error text so we don't fire on
-    // unrelated Retry buttons (e.g., a Git retry dialog). Walk up a few levels
-    // and check descendant text.
+    // unrelated Retry buttons (e.g., a Git retry dialog). Walk up the ancestor
+    // chain and check each ancestor's textContent. Antigravity nests the error
+    // fairly deep — observed 10 levels in the wild — so we allow a generous
+    // upper bound. Stops at document.body either way.
     let node = btn;
-    for (let i = 0; i < 6 && node; i++) {
+    for (let i = 0; i < HIGH_TRAFFIC_ANCESTOR_DEPTH && node && node !== document.body; i++) {
       if (HIGH_TRAFFIC_TEXT.test(node.textContent || '')) return true;
       node = node.parentElement;
     }
@@ -110,7 +134,11 @@
     }
     if (recentClicks.length >= RUNAWAY_MAX_CLICKS) {
       isTripped = true;
-      log('runaway circuit breaker tripped — stopping');
+      warn(
+        `Circuit breaker tripped — ${RUNAWAY_MAX_CLICKS} clicks in ${
+          RUNAWAY_WINDOW_MS / 1000
+        }s. Stopping to avoid a click loop. Reload the window to reset.`
+      );
       controller.stop();
     }
   };
@@ -160,16 +188,32 @@
 
     lastRetryClickAt = now;
     retryClickCount++;
-    recordClick(now);
-    log('clicked Retry', { retryClickCount, scanCount });
+    info(`Clicked Retry (#${retryClickCount}).`);
+    debug('clicked retry', { retryClickCount, scanCount });
     retryButton.click();
+    recordClick(now);
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => {
+      const noun = retryClickCount === 1 ? 'retry' : 'retries';
+      info(`Still on duty — ${retryClickCount} ${noun} so far.`);
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   }
 
   const controller = {
     start() {
       if (isRunning) return this.status();
       if (isTripped) {
-        log('refusing to start — circuit breaker tripped; reload the window to reset');
+        warn('Refusing to start — circuit breaker tripped. Reload the window to reset.');
         return this.status();
       }
 
@@ -181,8 +225,9 @@
         subtree: true
       });
 
+      startHeartbeat();
       queueScan();
-      log('started');
+      info('On duty — watching for the Retry button after high-traffic errors.');
       return this.status();
     },
 
@@ -192,12 +237,13 @@
 
       documentObserver?.disconnect();
       panelObserver?.disconnect();
+      stopHeartbeat();
 
       documentObserver = null;
       panelObserver = null;
       activePanel = null;
 
-      log('stopped');
+      info('Stopped. Call antigravityAutoRetry.start() to resume.');
       return this.status();
     },
 

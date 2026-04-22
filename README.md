@@ -113,6 +113,7 @@ Your edits to `~/.antigravity-auto-retry/antigravity-auto-retry.js` are preserve
 | --- | --- |
 | Antigravity Auto Retry: Install | First-time install. Writes backup, seeds `antigravity-auto-retry.js`, patches `workbench.html`. |
 | Antigravity Auto Retry: Reapply (after update) | Re-patches `workbench.html` after an Antigravity update clobbered it. |
+| Antigravity Auto Retry: Refresh Retry Script | Overwrites your local `antigravity-auto-retry.js` with the version bundled in the extension. Run this after extension upgrades to pick up script fixes. Offers to back up your current file first. |
 | Antigravity Auto Retry: Uninstall | Restores `workbench.html` from backup. Leaves your `antigravity-auto-retry.js` in place. |
 | Antigravity Auto Retry: Show Status | Prints current state and paths. |
 | Antigravity Auto Retry: Open Retry Script | Opens `~/.antigravity-auto-retry/antigravity-auto-retry.js` for editing. |

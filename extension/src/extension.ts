@@ -6,6 +6,7 @@ import {
   WorkbenchNotFoundError,
   detectState,
   install,
+  refreshScript,
   sudoHintForPatch,
   uninstall
 } from './patcher';
@@ -116,6 +117,54 @@ async function showStatus() {
   await vscode.window.showInformationMessage(lines.join('\n'), { modal: true });
 }
 
+async function runRefreshScript(context: vscode.ExtensionContext) {
+  try {
+    const choice = await vscode.window.showWarningMessage(
+      'Refresh the retry script from the bundled version?',
+      {
+        modal: true,
+        detail: `Overwrites ${userScriptPath()} with the script shipped with this extension. If you've customized that file, back it up first.`
+      },
+      'Back up & Refresh',
+      'Refresh (no backup)'
+    );
+    if (!choice) return;
+
+    const { backupPath: bak, wasOverwrite } = refreshScript(
+      context.extensionPath,
+      choice === 'Back up & Refresh'
+    );
+
+    const summary = wasOverwrite
+      ? bak
+        ? `Retry script refreshed. Previous version saved to ${bak}.`
+        : 'Retry script refreshed.'
+      : 'Retry script seeded (no previous version existed).';
+
+    const nextAction: 'Reload Window' | 'Install Patch' =
+      detectState() === 'installed' ? 'Reload Window' : 'Install Patch';
+
+    const pick = await vscode.window.showInformationMessage(
+      `${summary} ${
+        nextAction === 'Reload Window'
+          ? 'Reload the window for the new script to take effect.'
+          : 'Run "Antigravity Auto Retry: Install" to patch workbench.html with it.'
+      }`,
+      nextAction
+    );
+
+    if (pick === 'Reload Window') {
+      await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    } else if (pick === 'Install Patch') {
+      await runInstall(context.extensionPath, false);
+    }
+  } catch (err) {
+    await handleError(err);
+  } finally {
+    refreshStatusBar();
+  }
+}
+
 async function openScript() {
   const uri = vscode.Uri.file(userScriptPath());
   try {
@@ -180,6 +229,9 @@ export function activate(context: vscode.ExtensionContext) {
       runInstall(context.extensionPath, true)
     ),
     vscode.commands.registerCommand('antigravityAutoRetry.uninstall', runUninstall),
+    vscode.commands.registerCommand('antigravityAutoRetry.refreshScript', () =>
+      runRefreshScript(context)
+    ),
     vscode.commands.registerCommand('antigravityAutoRetry.status', showStatus),
     vscode.commands.registerCommand('antigravityAutoRetry.openScript', openScript)
   );

@@ -30,6 +30,10 @@
         "title": "Antigravity Auto Retry: Reapply (after update)"
       },
       {
+        "command": "antigravityAutoRetry.refreshScript",
+        "title": "Antigravity Auto Retry: Refresh Retry Script"
+      },
+      {
         "command": "antigravityAutoRetry.status",
         "title": "Antigravity Auto Retry: Show Status"
       },
