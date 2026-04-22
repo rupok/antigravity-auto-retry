@@ -14,55 +14,42 @@ Antigravity is a VSCode fork (an Electron app) that ships Claude via its own bun
 
 Antigravity does not expose a public extension API for the chat panel — its webview is locked down and its retry control is not reachable from a third-party extension. There is no official seam, and none is likely to be added.
 
-So this project ships a small retry-clicking script, plus an optional VSCode extension that loads it into Antigravity on every launch.
+So this project ships a VSCode extension that patches Antigravity to load a small retry-clicking script on every launch. (There's also a no-install DevTools paste if you just want to try it once.)
 
 ---
 
-## Two ways to use it
+## Install
 
-Pick whichever fits your style — both use the same script and the same safety guarantees.
+The extension patches Antigravity's `workbench.html` so the retry script runs on every launch. Survives restarts, resilient to updates via a one-click reapply.
 
-| Method | Effort | Persistence |
-| --- | --- | --- |
-| **[DevTools paste](#option-1-devtools-paste)** | Paste once per window | Runs until you reload |
-| **[VSCode extension](#option-2-vscode-extension)** | Build + install once, reapply after Antigravity updates | Every launch, forever |
+Pick whichever install flow fits you — they all end up in the same place.
 
-If you just want to try it, start with the DevTools paste. If you like it, move to the extension.
+| Method | Effort |
+| --- | --- |
+| **[Ask Antigravity chat to do it](#ask-antigravity-chat-to-do-it-easiest)** | Paste one prompt. Zero clicks after. |
+| **[One-line CLI](#one-line-cli)** | Paste one command in a terminal. |
+| **[Manual install](#manual-install-no-cli)** | Download `.vsix` + pick in command palette. |
 
----
-
-## Option 1: DevTools paste
-
-No install, no patching. Works in every Antigravity window you paste it into.
-
-1. In Antigravity, open DevTools: `Cmd+Opt+I` (macOS) or `Ctrl+Shift+I` (Windows/Linux).
-2. Switch to the **Console** tab.
-3. If Antigravity prompts for consent, type `allow pasting` and press Enter.
-4. Copy the contents of [extension/antigravity-auto-retry.js](extension/antigravity-auto-retry.js) and paste into the console.
-5. Press Enter. The script starts immediately.
-
-It runs until you reload the window. Paste again next session.
+Just want to try it without installing anything? Jump to the [DevTools paste fallback](#devtools-paste-fallback).
 
 ---
 
-## Option 2: VSCode extension
-
-Set-and-forget. The extension patches Antigravity's `workbench.html` to load the retry script on every launch. Survives restarts, resilient to updates via a one-click reapply.
-
-### Install via Antigravity chat (easiest)
+### Ask Antigravity chat to do it (easiest)
 
 Antigravity's agent has terminal and command-palette access. Paste this into the chat and hit Enter:
 
-> Install the Antigravity Auto Retry extension from https://github.com/rupok/antigravity-auto-retry and apply its workbench patch.
->
-> 1. Run the one-line install command from the README (curl + `antigravity --install-extension`).
-> 2. Reload this window so the extension activates.
-> 3. Run the **Antigravity Auto Retry: Install** command from the command palette.
-> 4. Reload the window again so the patch takes effect.
+```
+Install the Antigravity Auto Retry extension from https://github.com/rupok/antigravity-auto-retry and apply its workbench patch.
+
+1. Run: curl -fL https://github.com/rupok/antigravity-auto-retry/raw/main/antigravity-auto-retry.vsix -o /tmp/antigravity-auto-retry.vsix && antigravity --install-extension /tmp/antigravity-auto-retry.vsix
+2. Reload this window so the extension activates.
+3. Run the "Antigravity Auto Retry: Install" command from the command palette.
+4. Reload the window again so the patch takes effect.
+```
 
 If the agent can execute command-palette commands, it'll do all four steps for you. If it can only run terminal commands, it'll stop after step 1 and the extension's first-run notification will walk you through the rest — one click.
 
-### Install in one command
+### One-line CLI
 
 Make sure `antigravity` is on your `PATH` first. If not: open Antigravity → Command Palette → **Shell Command: Install 'antigravity' command in PATH**.
 
@@ -73,6 +60,13 @@ curl -fL https://github.com/rupok/antigravity-auto-retry/raw/main/antigravity-au
 ```
 
 This downloads the `.vsix` straight from this repo and installs it into Antigravity.
+
+### Manual install (no CLI)
+
+If you'd rather not use the `antigravity` CLI:
+
+1. Download [antigravity-auto-retry.vsix](antigravity-auto-retry.vsix) from this repo.
+2. Open Antigravity → Command Palette → **Extensions: Install from VSIX…** and pick the file.
 
 ### Apply the patch
 
@@ -95,15 +89,6 @@ antigravityAutoRetry.status()
 ```
 
 You should see `{ isRunning: true, isTripped: false, panelFound: true, ... }`.
-
-### Install manually (no CLI)
-
-If you'd rather not use the `antigravity` CLI:
-
-1. Download [antigravity-auto-retry.vsix](antigravity-auto-retry.vsix) from this repo.
-2. Open Antigravity → Command Palette → **Extensions: Install from VSIX…** and pick the file.
-
-Same "Install Patch" notification appears after install.
 
 ### Build from source
 
@@ -132,6 +117,18 @@ Your edits to `~/.antigravity-auto-retry/antigravity-auto-retry.js` are preserve
 | Antigravity Auto Retry: Uninstall | Restores `workbench.html` from backup. Leaves your `antigravity-auto-retry.js` in place. |
 | Antigravity Auto Retry: Show Status | Prints current state and paths. |
 | Antigravity Auto Retry: Open Retry Script | Opens `~/.antigravity-auto-retry/antigravity-auto-retry.js` for editing. |
+
+---
+
+## DevTools paste fallback
+
+No install, no patching. Handy for a one-off try, a machine where you can't install the extension, or a quick test after editing the script. Runs until you reload the window — you'll have to paste it again next session.
+
+1. In Antigravity, open DevTools: `Cmd+Opt+I` (macOS) or `Ctrl+Shift+I` (Windows/Linux).
+2. Switch to the **Console** tab.
+3. If Antigravity prompts for consent, type `allow pasting` and press Enter.
+4. Copy the contents of [extension/antigravity-auto-retry.js](extension/antigravity-auto-retry.js) and paste into the console.
+5. Press Enter. The script starts immediately.
 
 ---
 
