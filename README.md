@@ -29,8 +29,7 @@ Pick whichever install flow fits you — they all end up in the same place.
 | **[Ask Antigravity chat to do it](#ask-antigravity-chat-to-do-it-easiest)** | Paste one prompt. Zero clicks after. |
 | **[One-line CLI](#one-line-cli)** | Paste one command in a terminal. |
 | **[Manual install](#manual-install-no-cli)** | Download `.vsix` + pick in command palette. |
-
-Just want to try it without installing anything? Jump to the [DevTools paste fallback](#devtools-paste-fallback).
+| **[DevTools paste](#devtools-paste-fallback)** | No install. Paste script per window. |
 
 ---
 
