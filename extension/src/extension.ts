@@ -123,7 +123,7 @@ async function runRefreshScript(context: vscode.ExtensionContext) {
       'Refresh the retry script from the bundled version?',
       {
         modal: true,
-        detail: `Overwrites ${userScriptPath()} with the script shipped with this extension. If you've customized that file, back it up first.`
+        detail: `Overwrites ${userScriptPath()} with the script shipped with this extension, then re-patches workbench.html so the new script actually runs. If you've customized the script, back it up first.`
       },
       'Back up & Refresh',
       'Refresh (no backup)'
@@ -135,28 +135,24 @@ async function runRefreshScript(context: vscode.ExtensionContext) {
       choice === 'Back up & Refresh'
     );
 
+    // Re-patch workbench.html with the new script content so the refresh
+    // actually takes effect after a reload. Without this, workbench.html
+    // would still carry the previous (now-stale) script inline.
+    install(context.extensionPath);
+
     const summary = wasOverwrite
       ? bak
-        ? `Retry script refreshed. Previous version saved to ${bak}.`
-        : 'Retry script refreshed.'
-      : 'Retry script seeded (no previous version existed).';
-
-    const nextAction: 'Reload Window' | 'Install Patch' =
-      detectState() === 'installed' ? 'Reload Window' : 'Install Patch';
+        ? `Retry script refreshed and workbench.html re-patched. Previous version saved to ${bak}.`
+        : 'Retry script refreshed and workbench.html re-patched.'
+      : 'Retry script seeded and workbench.html patched.';
 
     const pick = await vscode.window.showInformationMessage(
-      `${summary} ${
-        nextAction === 'Reload Window'
-          ? 'Reload the window for the new script to take effect.'
-          : 'Run "Antigravity Auto Retry: Install" to patch workbench.html with it.'
-      }`,
-      nextAction
+      `${summary} Reload the window so the new script takes effect.`,
+      'Reload Window'
     );
 
     if (pick === 'Reload Window') {
       await vscode.commands.executeCommand('workbench.action.reloadWindow');
-    } else if (pick === 'Install Patch') {
-      await runInstall(context.extensionPath, false);
     }
   } catch (err) {
     await handleError(err);
