@@ -3,9 +3,39 @@
   const PUBLIC_API_NAME = 'antigravityAutoRetry';
 
   const PANEL_ELEMENT_ID = 'antigravity.agentSidePanelInputBox';
-  const HIGH_TRAFFIC_TEXT = /high\s+traffic/i;
   const RETRY_BUTTON_REGEX = /\bretry\b/i;
   const MIN_CLICK_INTERVAL_MS = 500;
+
+  // Error contexts where it's safe to auto-retry. Each entry has a label
+  // (used in logs) and a regex that must match some ancestor's textContent
+  // for a Retry click to fire. Order doesn't matter — first match wins.
+  const ERROR_PATTERNS = [
+    { label: 'high traffic', regex: /high\s+traffic/i },
+    {
+      label: 'agent terminated',
+      regex: /agent\s+(execution\s+)?terminated\s+due\s+to\s+error/i
+    }
+  ];
+
+  // Mode selector. Override via:
+  //   localStorage.antigravityAutoRetryMode = 'high-traffic-only'
+  //
+  //   'all'               — retry on every pattern in ERROR_PATTERNS (default)
+  //   'high-traffic-only' — only retry the transient overload error
+  const RETRY_MODE = (() => {
+    try {
+      return localStorage.getItem('antigravityAutoRetryMode') === 'high-traffic-only'
+        ? 'high-traffic-only'
+        : 'all';
+    } catch (_) {
+      return 'all';
+    }
+  })();
+
+  const ACTIVE_PATTERNS =
+    RETRY_MODE === 'high-traffic-only'
+      ? ERROR_PATTERNS.filter((p) => p.label === 'high traffic')
+      : ERROR_PATTERNS;
 
   // Safety circuit breaker. If the retry button stays visible after this many
   // clicks in this window, assume the UI is broken and stop clicking.
@@ -97,20 +127,23 @@
     return '';
   };
 
-  const HIGH_TRAFFIC_ANCESTOR_DEPTH = 20;
+  const ERROR_ANCESTOR_DEPTH = 20;
 
-  const hasHighTrafficContext = (btn) => {
-    // Anchor the click on the high-traffic error text so we don't fire on
-    // unrelated Retry buttons (e.g., a Git retry dialog). Walk up the ancestor
-    // chain and check each ancestor's textContent. Antigravity nests the error
-    // fairly deep — observed 10 levels in the wild — so we allow a generous
-    // upper bound. Stops at document.body either way.
+  const matchErrorContext = (btn) => {
+    // Anchor the click on a known error context so we don't fire on unrelated
+    // Retry buttons (e.g., a Git retry dialog). Walk up the ancestor chain and
+    // check each ancestor's textContent against ACTIVE_PATTERNS. Antigravity
+    // nests the error fairly deep — observed 10 levels in the wild — so we
+    // allow a generous upper bound. Stops at document.body either way.
     let node = btn;
-    for (let i = 0; i < HIGH_TRAFFIC_ANCESTOR_DEPTH && node && node !== document.body; i++) {
-      if (HIGH_TRAFFIC_TEXT.test(node.textContent || '')) return true;
+    for (let i = 0; i < ERROR_ANCESTOR_DEPTH && node && node !== document.body; i++) {
+      const text = node.textContent || '';
+      for (const pattern of ACTIVE_PATTERNS) {
+        if (pattern.regex.test(text)) return pattern;
+      }
       node = node.parentElement;
     }
-    return false;
+    return null;
   };
 
   const findRetryButton = (root) => {
@@ -119,8 +152,9 @@
     for (const btn of root.querySelectorAll('button')) {
       if (!isElementVisible(btn) || !isButtonEnabled(btn)) continue;
       if (!RETRY_BUTTON_REGEX.test(getButtonText(btn))) continue;
-      if (!hasHighTrafficContext(btn)) continue;
-      return btn;
+      const pattern = matchErrorContext(btn);
+      if (!pattern) continue;
+      return { button: btn, pattern };
     }
 
     return null;
@@ -179,18 +213,18 @@
 
     // Primary search within the known panel, fall back to document-wide if
     // the panel id ever changes.
-    const retryButton =
-      findRetryButton(activePanel) || findRetryButton(document.body);
-    if (!retryButton || !retryButton.isConnected) return;
+    const match = findRetryButton(activePanel) || findRetryButton(document.body);
+    if (!match || !match.button.isConnected) return;
 
     const now = Date.now();
     if (now - lastRetryClickAt < MIN_CLICK_INTERVAL_MS) return;
 
+    const { button, pattern } = match;
     lastRetryClickAt = now;
     retryClickCount++;
-    info(`Clicked Retry (#${retryClickCount}).`);
-    debug('clicked retry', { retryClickCount, scanCount });
-    retryButton.click();
+    info(`Clicked Retry (#${retryClickCount}) — matched "${pattern.label}".`);
+    debug('clicked retry', { retryClickCount, scanCount, pattern: pattern.label });
+    button.click();
     recordClick(now);
   }
 
@@ -227,7 +261,8 @@
 
       startHeartbeat();
       queueScan();
-      info('On duty — watching for the Retry button after high-traffic errors.');
+      const labels = ACTIVE_PATTERNS.map((p) => `"${p.label}"`).join(' / ');
+      info(`On duty — watching for Retry after ${labels} errors (mode: ${RETRY_MODE}).`);
       return this.status();
     },
 
@@ -262,7 +297,9 @@
         retryClickCount,
         scanCount,
         recentClicks: recentClicks.length,
-        minClickIntervalMs: MIN_CLICK_INTERVAL_MS
+        minClickIntervalMs: MIN_CLICK_INTERVAL_MS,
+        mode: RETRY_MODE,
+        activePatterns: ACTIVE_PATTERNS.map((p) => p.label)
       };
     }
   };

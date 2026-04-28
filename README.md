@@ -1,6 +1,6 @@
 # antigravity-auto-retry
 
-Ever felt frustrated seeing **"Our servers are experiencing high traffic right now, please try again in a minute."** in Antigravity while using Claude Opus?
+Ever felt frustrated seeing **"Our servers are experiencing high traffic right now, please try again in a minute."** or **"Agent execution terminated due to error."** in Antigravity while using Claude Opus?
 
 Tired of clicking **Retry** again and again like it's your full-time job?
 
@@ -10,7 +10,7 @@ This project fixes that.
 
 ## Why this exists
 
-Antigravity is a VSCode fork (an Electron app) that ships Claude via its own bundled extension. The high-traffic failure is frequent and the only user-facing response is clicking **Retry** manually.
+Antigravity is a VSCode fork (an Electron app) that ships Claude via its own bundled extension. The high-traffic and agent-terminated failures are frequent, and the only user-facing response is clicking **Retry** manually.
 
 Antigravity does not expose a public extension API for the chat panel — its webview is locked down and its retry control is not reachable from a third-party extension. There is no official seam, and none is likely to be added.
 
@@ -137,19 +137,31 @@ No install, no patching. Handy for a one-off try, a machine where you can't inst
 Whichever method you use, the script:
 
 1. Starts a `MutationObserver` on the Antigravity workbench.
-2. Watches for a visible, enabled `Retry` button whose ancestor container text matches `/high\s+traffic/i`.
+2. Watches for a visible, enabled `Retry` button whose ancestor container text matches one of the known error patterns:
+   - `/high\s+traffic/i` — the transient overload error
+   - `/agent\s+(execution\s+)?terminated\s+due\s+to\s+error/i` — the generic "Agent terminated" / "Agent execution terminated due to error" failure
 3. Clicks it — at most once every 500 ms.
 4. Stops itself if it clicks more than 10 times in 60 s, so a broken UI can never become a click storm.
 
 No network calls. No telemetry.
 
+### Retry mode
+
+By default the script retries both error types (mode: `all`). If you only want to auto-retry the transient high-traffic overload — and click manually for everything else — switch to narrow mode:
+
+```js
+localStorage.antigravityAutoRetryMode = 'high-traffic-only'
+```
+
+Reload the window. To go back, set it to `'all'` (or remove the key) and reload.
+
 ---
 
 ## Safety
 
-- Clicks only a button that is visible, enabled, and sits inside a container whose text matches `/high\s+traffic/i`. Random "Retry" buttons elsewhere are ignored.
+- Clicks only a button that is visible, enabled, and sits inside a container whose text matches one of the known error patterns above. Random "Retry" buttons elsewhere (Git dialogs, etc.) are ignored.
 - 500 ms minimum interval between clicks.
-- Auto-disables after 10 clicks in 60 s to avoid click loops against a broken UI.
+- Auto-disables after 10 clicks in 60 s to avoid click loops against a broken UI. So even if a non-transient error keeps triggering "Agent terminated", the worst case is 10 wasted clicks before the circuit breaker stops everything.
 - Extension writes only to `workbench.html` and `~/.antigravity-auto-retry/`.
 - `workbench.html.antigravity-auto-retry.bak` holds the unmodified file for one-command uninstall.
 
@@ -183,7 +195,9 @@ localStorage.antigravityAutoRetryDebug = '1'
   retryClickCount: 5,
   scanCount: 20,
   recentClicks: 1,
-  minClickIntervalMs: 500
+  minClickIntervalMs: 500,
+  mode: 'all',
+  activePatterns: ['high traffic', 'agent terminated']
 }
 ```
 
@@ -195,14 +209,15 @@ These apply to the VSCode extension only. The DevTools paste has none of these �
 
 - **"Your Antigravity installation appears to be corrupt" banner.** Antigravity checksums its own bundle; patching `workbench.html` trips that check. The banner is dismissable. This is the price of admission for touching the workbench at all — no approved alternative exists.
 - **Updates revert the patch.** Antigravity updates replace `workbench.html`. Use **Reapply**. The extension nudges you automatically.
-- **Selector drift.** If Antigravity rearranges the Retry button or rewords the error, the script may stop matching. Edit `~/.antigravity-auto-retry/antigravity-auto-retry.js` and reload.
+- **Selector drift.** If Antigravity rearranges the Retry button or rewords the errors, the script may stop matching. Edit `~/.antigravity-auto-retry/antigravity-auto-retry.js` and reload (or open an issue and I'll update the patterns).
+- **Non-transient agent errors.** The "Agent terminated" pattern is more general than the high-traffic overload — it'll also fire on auth failures, quota exhaustion, code errors, etc. The circuit breaker caps the damage at 10 wasted clicks per minute, but if you'd rather only retry the transient overload, set `localStorage.antigravityAutoRetryMode = 'high-traffic-only'` and reload.
 - **Hostile UI changes.** If Antigravity moves the chat into an isolated cross-origin webview, this approach stops working. That would require a separate approach (CDP via an external process) which is out of scope.
 
 ---
 
 ## Notes
 
-- Depends on Antigravity's DOM structure (panel ID `antigravity.agentSidePanelInputBox`, "high traffic" error text, button text `Retry`). If any of these change, update the script accordingly.
+- Depends on Antigravity's DOM structure (panel ID `antigravity.agentSidePanelInputBox`, error text matching the patterns above, button text `Retry`). If any of these change, update the script accordingly.
 - Designed for personal productivity. Not endorsed by Google or Antigravity.
 
 ---
